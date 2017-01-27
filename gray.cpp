@@ -1,25 +1,39 @@
 #include "gray.h"
 
 template <> GrayByte toGrayCode(uint8_t v) {
-  return v;//TODO
+  return v ^ (v >> 1);
 }
 
 template <> GrayShort toGrayCode(uint16_t v) {
-  return v;//TODO
+  return v ^ (v >> 1);
 }
 
 template <> GrayInt toGrayCode(uint32_t v) {
-  return v;//TODO
+  return v ^ (v >> 1);
 }
 
 template <> uint8_t fromGrayCode(GrayByte v) {
-  return v;//TODO
+  v = v ^ (v >> 4);
+  v = v ^ (v >> 2);
+  v = v ^ (v >> 1);
+  return v;
 }
 
 template <> uint16_t fromGrayCode(GrayShort v) {
-  return v;//TODO
+  v = v ^ (v >> 8);
+  v = v ^ (v >> 4);
+  v = v ^ (v >> 2);
+  v = v ^ (v >> 1);
+  return v;
+
 }
 
 template <> uint32_t fromGrayCode(GrayInt v) {
-  return v;//TODO
+  v = v ^ (v >> 16);
+  v = v ^ (v >> 8);
+  v = v ^ (v >> 4);
+  v = v ^ (v >> 2);
+  v = v ^ (v >> 1);
+  return v;
+
 }

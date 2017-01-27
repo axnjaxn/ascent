@@ -29,12 +29,11 @@ YUVA_Color toYUVA(Color color) {
 }
 
 YUVA_Color toYUVA(RGBA_Color rgba) {
-  YUVA_Color yuva;  
-  float r = fromGrayCode(rgba.R), g = fromGrayCode(rgba.G), b = fromGrayCode(rgba.B);
+  YUVA_Color yuva;
 
-  yuva.Y = clampByte(0.299f * r + 0.587f * g + 0.114f * b);
-  yuva.U = clampByte(0.564f * (b - yuva.Y) + 128.0f);
-  yuva.V = clampByte(0.713f * (r - yuva.Y) + 128.0f);  
+  yuva.Y = clampByte(0.299f * rgba.R + 0.587f * rgba.G + 0.114f * rgba.B);
+  yuva.U = clampByte(0.564f * (rgba.B - yuva.Y) + 128.0f);
+  yuva.V = clampByte(0.713f * (rgba.R - yuva.Y) + 128.0f);  
   yuva.A = rgba.A;
 
   return yuva;
