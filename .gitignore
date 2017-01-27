@@ -1,0 +1,6 @@
+*~
+*.o
+ascent
+ascent.exe
+SDL2.dll
+Thumbs.db
