@@ -1,11 +1,22 @@
 #include "population.h"
 
-Population::Population(Evaluator* eval, int N, int K, int maxpop) {
-  //TODO
+#include <limits>
+
+Population::Population(Evaluator* eval, int N, int K, int maxpop) : eval(eval), N(N), K(K), maxpop(maxpop) {
+  CachedGenome cg = {Genome(N, K), std::numeric_limits<float>.lowest()};
+  pop.assign(maxpop, cg);
 }
 
 Population Population::random(Evaluator* eval, int N, int K, int maxpop) {
-  //TODO
+  Population P(eval, N, K, maxpop);
+  
+  for (int i = 0; i < P.pop.size(); i++) {
+    P.pop[i].genome = Genome::random(N, K);
+    P.pop[i].quality = eval->evaluate(P.pop[i].genome);
+  }
+  P.sortByQuality();
+
+  return P;
 }
 
 void Population::sortByQuality() {
@@ -13,7 +24,7 @@ void Population::sortByQuality() {
 }
 
 void Population::cull() {
-  //TODO
+  pop.resize((int)ceil(elite * pop.size()));
 }
 
 Genome Population::makeChild() const {
@@ -21,9 +32,20 @@ Genome Population::makeChild() const {
 }
 
 void Population::repopulate() {
-  //TODO
+  std::vector<CachedGenome> next = pop;
+  CachedGenome cg;
+  
+  while (next.size() < maxpop) {
+    cg.genome = makeChild();
+    cg.quality = eval->evaluate(cg.genome());
+    next.push_back(cg);
+  }
+
+  pop = next;
+  sortByQuality();
 }
 
 void Population::advance() {
-  //TODO
+  cull();
+  repopulate();
 }

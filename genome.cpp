@@ -1,11 +1,15 @@
 #include "genome.h"
 
 Genome::Genome(int N, int K) {
-  //TODO
+  polys.assign(N, makePoly(K));
 }
 
 Genome Genome::random(int N, int K) {
-  return Genome(N, K); //TODO
+  Genome genome(N, K);
+
+  //TODO: Initialize values
+  
+  return genome;
 }
 
 void Genome::mutate(double p) {

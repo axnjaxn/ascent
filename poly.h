@@ -14,6 +14,7 @@ using FloatVert = struct {
   float x, y;
 };
 
+Vert noVert();
 bool isVert(Vert v);
 FloatVert toFloat(Vert v, int width, int height);
 
