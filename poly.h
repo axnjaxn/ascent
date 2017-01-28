@@ -5,12 +5,12 @@
 
 #include <vector>
 
-using Vert = union {
+union Vert {
   struct {GrayShort X, Y;};
   uint32_t XY;
 };
 
-using FloatVert = struct {
+using FloatVert = struct _FloatVert {
   float x, y;
 };
 
@@ -18,7 +18,7 @@ Vert noVert();
 bool isVert(Vert v);
 FloatVert toFloat(Vert v, int width, int height);
 
-using Poly = struct {
+using Poly = struct _Poly {
   Color color;
   std::vector<Vert> verts;
 };

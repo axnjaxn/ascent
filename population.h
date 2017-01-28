@@ -3,13 +3,14 @@
 
 #include "genome.h"
 
-using CachedGenome = struct {
+using CachedGenome = struct _CachedGenome {
   Genome genome;
-  float quality;
+  double quality;
 };
 
 class Evaluator {
-  virtual float evaluate(const Genome& genome) = 0;
+public:
+  virtual double evaluate(const Genome& genome) = 0;
 };
 
 class Population {

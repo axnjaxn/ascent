@@ -2,17 +2,19 @@
 
 #include <limits>
 
+#include <cmath>
+
 Population::Population(Evaluator* eval, int N, int K, int maxpop) : eval(eval), N(N), K(K), maxpop(maxpop) {
-  CachedGenome cg = {Genome(N, K), std::numeric_limits<float>.lowest()};
-  pop.assign(maxpop, cg);
+  pop.assign(maxpop, {Genome(N, K), std::numeric_limits<float>::lowest()});
 }
 
 Population Population::random(Evaluator* eval, int N, int K, int maxpop) {
   Population P(eval, N, K, maxpop);
+  Genome genome;
   
   for (int i = 0; i < P.pop.size(); i++) {
-    P.pop[i].genome = Genome::random(N, K);
-    P.pop[i].quality = eval->evaluate(P.pop[i].genome);
+    genome = Genome::random(N, K);
+    P.pop[i] = {genome, eval->evaluate(P.pop[i].genome)};
   }
   P.sortByQuality();
 
@@ -33,12 +35,11 @@ Genome Population::makeChild() const {
 
 void Population::repopulate() {
   std::vector<CachedGenome> next = pop;
-  CachedGenome cg;
+  Genome genome;
   
   while (next.size() < maxpop) {
-    cg.genome = makeChild();
-    cg.quality = eval->evaluate(cg.genome());
-    next.push_back(cg);
+    genome = makeChild();
+    next.push_back({genome, eval->evaluate(genome)});
   }
 
   pop = next;

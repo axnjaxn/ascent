@@ -7,6 +7,7 @@ class Genome {
 public:
   std::vector<Poly> polys;
 
+  Genome() { }
   Genome(int N, int K);
   static Genome random(int N, int K);
   

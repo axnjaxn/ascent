@@ -5,7 +5,8 @@ class Image {
 };
 
 class ImageEvaluator : public Evaluator {
-  float evaluate(const Genome& genome);
+public:
+  double evaluate(const Genome& genome);
 };
 
 int main(int argc, char* argv[]) {

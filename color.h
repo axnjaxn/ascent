@@ -5,17 +5,17 @@
 
 //In this file, YUV will be synonymous with YCbCr
 
-using Color = union {
+union Color {
   struct {GrayByte Y, U, V, A;};
   uint32_t YUVA;
 };
 
-using YUVA_Color = union {
+union YUVA_Color {
   struct {uint8_t Y, U, V, A;};
   uint32_t YUVA;
 };
 
-using RGBA_Color = union {
+union RGBA_Color {
   struct {uint8_t R, G, B, A;};
   uint32_t RGBA;
 };
