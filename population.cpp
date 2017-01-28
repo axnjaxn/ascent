@@ -1,5 +1,6 @@
 #include "population.h"
 
+#include <algorithm>
 #include <limits>
 
 #include <cmath>
@@ -22,7 +23,8 @@ Population Population::random(Evaluator* eval, int N, int K, int maxpop) {
 }
 
 void Population::sortByQuality() {
-  //TODO
+  std::sort(pop.begin(), pop.end(),
+	    [](const CachedGenome& g1, const CachedGenome& g2) -> bool {return g1.quality > g2.quality;});
 }
 
 void Population::cull() {
@@ -30,7 +32,11 @@ void Population::cull() {
 }
 
 Genome Population::makeChild() const {
-  return Genome(N, K);//TODO
+  Genome child = Genome::crossover(pop[rand() % pop.size()].genome,
+				   pop[rand() % pop.size()].genome,
+				   pcrossover);
+  child.mutate(pmutate);
+  return child;
 }
 
 void Population::repopulate() {

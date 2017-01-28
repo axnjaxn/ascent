@@ -24,7 +24,7 @@ public:
 
   int maxpop;
   float elite = 0.1;
-  double psurvive = 0.0, pmutate = 0.01, pcrossover = 0.5;
+  double pmutate = 0.01, pcrossover = 0.5;
 
   Population(Evaluator* eval, int N, int K, int maxpop);
   static Population random(Evaluator* eval, int N, int K, int maxpop);

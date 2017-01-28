@@ -12,7 +12,7 @@ public:
   static Genome random(int N, int K);
   
   void mutate(double p);
-  static void crossover(Genome& g1, Genome& g2, double p);
+  static Genome crossover(const Genome& g1, const Genome& g2, double p);
   void normalize();
 };
 
