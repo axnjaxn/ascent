@@ -1,7 +1,7 @@
 APPNAME = ascent
 
-LIBS = `sdl2-config --libs`
-CFLAGS = -Wno-unused-result
+LIBS = `sdl2-config --libs` -lSDL2_gfx `byteimage-config --libs`
+CFLAGS = -Wno-unused-result `byteimage-config --cflags`
 CXXFLAGS = -std=c++11
 EXT =
 
@@ -14,15 +14,6 @@ debug: $(APP)
 
 release: CFLAGS += -O2
 release: $(APP)
-
-win-release: PREFIX = i686-w64-mingw32
-win-release: CC = $(PREFIX)-gcc
-win-release: CXX = $(PREFIX)-g++
-win-release: CPP = $(PREFIX)-cpp
-win-release: CFLAGS += -DMINGW -DNO_STDIO_REDIRECT
-win-release: LIBS = `/usr/$(PREFIX)/bin/sdl2-config --libs` -lmingw32 -mwindows -lSDL2main -static-libgcc -static-libstdc++
-win-release: EXT = .exe
-win-release: release
 
 gray.o: gray.h gray.cpp
 	$(CXX) gray.cpp -c $(CFLAGS) $(CXXFLAGS)
@@ -45,8 +36,8 @@ main.o: gray.h color.h poly.h genome.h population.h main.cpp
 $(APP): gray.o color.o poly.o genome.o population.o main.o
 	$(CXX) gray.o color.o poly.o genome.o population.o main.o -o $@ $(LDFLAGS) $(LIBS)
 
-run: debug
-	./$(APP)
+run: debug test.jpg
+	./$(APP) test.jpg
 
 clean:
 	rm -f *~ *.o $(APP) Thumbs.db
