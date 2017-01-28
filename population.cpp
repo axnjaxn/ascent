@@ -5,21 +5,12 @@
 
 #include <cmath>
 
-Population::Population(Evaluator* eval, int N, int K, int maxpop) : eval(eval), N(N), K(K), maxpop(maxpop) {
-  pop.assign(maxpop, {Genome(N, K), std::numeric_limits<float>::lowest()});
+Population::Population(Evaluator* eval, int maxpop) : eval(eval), maxpop(maxpop), generation(0) {
+  pop.assign(maxpop, {Genome(), std::numeric_limits<float>::lowest()});
 }
 
-Population Population::random(Evaluator* eval, int N, int K, int maxpop) {
-  Population P(eval, N, K, maxpop);
-  Genome genome;
-  
-  for (int i = 0; i < P.pop.size(); i++) {
-    genome = Genome::random(N, K);
-    P.pop[i] = {genome, eval->evaluate(P.pop[i].genome)};
-  }
-  P.sortByQuality();
-
-  return P;
+void Population::seed(int N, int iterations) {
+  //TODO: Accelerated mutation
 }
 
 void Population::sortByQuality() {
@@ -35,7 +26,8 @@ Genome Population::makeChild() const {
   Genome child = Genome::crossover(pop[rand() % pop.size()].genome,
 				   pop[rand() % pop.size()].genome,
 				   pcrossover);
-  child.mutate(pmutate);
+  child.mutate(pmutate, sigma_c, sigma_v);
+  child.lengthen(plengthen);
   return child;
 }
 
@@ -55,4 +47,5 @@ void Population::repopulate() {
 void Population::advance() {
   cull();
   repopulate();
+  generation++;
 }

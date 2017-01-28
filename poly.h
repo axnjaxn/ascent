@@ -5,24 +5,16 @@
 
 #include <vector>
 
-union Vert {
-  struct {GrayShort X, Y;};
-  uint32_t XY;
-};
-
-using FloatVert = struct _FloatVert {
+using Vert = struct _Vert {
   float x, y;
 };
 
-Vert noVert();
-bool isVert(Vert v);
-FloatVert toFloat(Vert v, int width, int height);
-
 using Poly = struct _Poly {
-  Color color;
+  YUVA_Color color;
   std::vector<Vert> verts;
 };
 
 Poly makePoly(int K);
+void normalize(Poly& poly); //Remove concavity, etc.
 
 #endif

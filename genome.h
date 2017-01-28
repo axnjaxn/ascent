@@ -8,12 +8,10 @@ public:
   std::vector<Poly> polys;
 
   Genome() { }
-  Genome(int N, int K);
-  static Genome random(int N, int K);
-  
-  void mutate(double p);
+
+  void lengthen(double p);
+  void mutate(double p, double sigma_c, double sigma_v);
   static Genome crossover(const Genome& g1, const Genome& g2, double p);
-  void normalize();
 };
 
 

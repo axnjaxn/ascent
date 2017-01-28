@@ -41,31 +41,18 @@ ByteImage rasterize(SDL_Renderer* render, SDL_Texture* texture, const Genome& ge
   SDL_RenderSetLogicalSize(render, nc, nr);
   SDL_RenderClear(render);
 
-  RGBA_Color rgba;
   std::vector<int16_t> x, y;
-  FloatVert fv;
+  Vert v;
   for (auto poly : genome.polys) {
-    rgba.RGBA = toYUVA(poly.color).YUVA;
-
     x.resize(poly.verts.size());
     y.resize(poly.verts.size());
 
-    for (int i = 0; i < poly.verts.size(); i++) {
-      if (isVert(poly.verts[i]))
-	fv = toFloat(poly.verts[i], nc, nr);
-      else {
-	x.resize(i);
-	y.resize(i);
-	break;
-      }
-	
-      x[i] = (int16_t)(fv.x + 0.5f);
-      y[i] = (int16_t)(fv.y + 0.5f);
+    for (int i = 0; i < poly.verts.size(); i++) {	
+      x[i] = (int16_t)(v.x * nc + 0.5f);
+      y[i] = (int16_t)(v.y * nr + 0.5f);
     }
 
-    if (x.size() < 3) continue;
-
-    filledPolygonRGBA(render, x.data(), y.data(), x.size(), rgba.R, rgba.G, rgba.B, rgba.A);
+    filledPolygonRGBA(render, x.data(), y.data(), x.size(), poly.color.Y, poly.color.U, poly.color.V, poly.color.A);
   }
 
   uint32_t* px = new uint32_t [nr * nc];
@@ -94,34 +81,24 @@ void draw(SDL_Renderer* render, const Genome& genome) {
   SDL_RenderSetLogicalSize(render, nc, nr);
   SDL_RenderClear(render);
 
-  RGBA_Color rgba;
+  RGBA_Color color;
   std::vector<int16_t> x, y;
-  FloatVert fv;
+  Vert v;
   for (auto poly : genome.polys) {
-    rgba = toRGBA(poly.color);
-
+    color = toRGBA(poly.color);
+    
     x.resize(poly.verts.size());
     y.resize(poly.verts.size());
 
-    for (int i = 0; i < poly.verts.size(); i++) {
-      if (isVert(poly.verts[i]))
-	fv = toFloat(poly.verts[i], nc, nr);
-      else {
-	x.resize(i);
-	y.resize(i);
-	break;
-      }
-	
-      x[i] = (int16_t)(fv.x + 0.5f);
-      y[i] = (int16_t)(fv.y + 0.5f);
+    for (int i = 0; i < poly.verts.size(); i++) {	
+      x[i] = (int16_t)(v.x * nc + 0.5f);
+      y[i] = (int16_t)(v.y * nr + 0.5f);
     }
-
-    if (x.size() < 3) continue;
-
-    filledPolygonRGBA(render, x.data(), y.data(), x.size(), rgba.R, rgba.G, rgba.B, rgba.A);
+    
+    filledPolygonRGBA(render, x.data(), y.data(), x.size(), color.R, color.G, color.B, color.A);
+	
   }
 }
-
 
 int main(int argc, char* argv[]) {
   if (argc != 2) {
@@ -152,7 +129,7 @@ int main(int argc, char* argv[]) {
   SDL_Texture* texture = SDL_CreateTexture(render, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, img.nc, img.nr);
     
   ImageEvaluator eval(img, [=](const Genome& genome) -> ByteImage {return rasterize(render, texture, genome);});
-  auto pop = Population::random(&eval, 64, 6, 32);
+  Population P(&eval, 32);
 
   SDL_Event event;
   bool exitflag = false;
@@ -161,9 +138,9 @@ int main(int argc, char* argv[]) {
       if (event.type == SDL_QUIT) exitflag = true;
     }
 
-    pop.advance();
+    P.advance();
     
-    draw(render, pop.pop[0].genome);
+    draw(render, P.best());
     SDL_RenderPresent(render);
   }
   
