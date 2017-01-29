@@ -3,6 +3,8 @@
 
 #include "genome.h"
 
+#include <functional>
+
 using CachedGenome = struct _CachedGenome {
   Genome genome;
   double quality;
@@ -22,12 +24,12 @@ public:
   std::vector<CachedGenome> pop;
 
   int maxpop;
-  float elite = 0.1;
-  double plengthen = 0.01, pmutate = 0.01, pcrossover = 0.5;
-  double sigma_c = 16.0, sigma_v = 0.2;
+  float elite = 0.3;
+  double plengthen = 0.05, pmutate = 0.01, pcrossover = 0.5;
+  double sigma_c = 24.0, sigma_v = 0.2;
 
   Population(Evaluator* eval, int maxpop);
-  void seed(int N, int iterations);
+  void seed(int N, int iterations, std::function<void(int, int, const Genome&, double)> callback);
   
   void sortByQuality();
   void cull();
@@ -37,6 +39,7 @@ public:
   void advance();
 
   inline const Genome& best() const {return pop[0].genome;}
+  inline const double quality() const {return pop[0].quality;}
 };
 
 #endif

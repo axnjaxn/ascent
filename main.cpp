@@ -1,4 +1,5 @@
 #include "population.h"
+#include "random.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL2_gfxPrimitives.h>
 #include <byteimage/byteimage.h>
@@ -27,7 +28,7 @@ public:
 	}
     sum /= img.nr * img.nc * 3;
     
-    return 1.0 - sum;
+    return 1.0 - sqrt(sum);
   }
 };
 
@@ -42,14 +43,13 @@ ByteImage rasterize(SDL_Renderer* render, SDL_Texture* texture, const Genome& ge
   SDL_RenderClear(render);
 
   std::vector<int16_t> x, y;
-  Vert v;
   for (auto poly : genome.polys) {
     x.resize(poly.verts.size());
     y.resize(poly.verts.size());
 
-    for (int i = 0; i < poly.verts.size(); i++) {	
-      x[i] = (int16_t)(v.x * nc + 0.5f);
-      y[i] = (int16_t)(v.y * nr + 0.5f);
+    for (int i = 0; i < poly.verts.size(); i++) {
+      x[i] = (int16_t)(poly.verts[i].x * nc + 0.5f);
+      y[i] = (int16_t)(poly.verts[i].y * nr + 0.5f);
     }
 
     filledPolygonRGBA(render, x.data(), y.data(), x.size(), poly.color.Y, poly.color.U, poly.color.V, poly.color.A);
@@ -83,21 +83,41 @@ void draw(SDL_Renderer* render, const Genome& genome) {
 
   RGBA_Color color;
   std::vector<int16_t> x, y;
-  Vert v;
-  for (auto poly : genome.polys) {
+  for (auto& poly : genome.polys) {
     color = toRGBA(poly.color);
     
     x.resize(poly.verts.size());
     y.resize(poly.verts.size());
 
-    for (int i = 0; i < poly.verts.size(); i++) {	
-      x[i] = (int16_t)(v.x * nc + 0.5f);
-      y[i] = (int16_t)(v.y * nr + 0.5f);
+    for (int i = 0; i < poly.verts.size(); i++) {
+      x[i] = (int16_t)(poly.verts[i].x * nc + 0.5f);
+      y[i] = (int16_t)(poly.verts[i].y * nr + 0.5f);
     }
     
-    filledPolygonRGBA(render, x.data(), y.data(), x.size(), color.R, color.G, color.B, color.A);
-	
+    filledPolygonRGBA(render, x.data(), y.data(), x.size(), color.R, color.G, color.B, color.A);	
   }
+}
+
+ByteImage toYUV(const ByteImage& img) {
+  ByteImage yuv(img.nr, img.nc, 3);
+
+  RGBA_Color rgba;
+  YUVA_Color yuva;
+  for (int r = 0; r < img.nr; r++)
+    for (int c = 0; c < img.nc; c++) {
+      rgba.R = img.at(r, c, 0);
+      rgba.G = img.at(r, c, 1);
+      rgba.B = img.at(r, c, 2);
+      rgba.A = 0xFF;
+      
+      yuva = toYUVA(rgba);
+      
+      yuv.at(r, c, 0) = yuva.Y;
+      yuv.at(r, c, 1) = yuva.U;
+      yuv.at(r, c, 2) = yuva.V;
+    }
+
+  return yuv;
 }
 
 int main(int argc, char* argv[]) {
@@ -105,9 +125,9 @@ int main(int argc, char* argv[]) {
     printf("Syntax: %s [image]\n", argv[0]);
     return 0;
   }
-  srand(time(NULL));
-
+  
   ByteImage img(argv[1]);
+  ByteImage yuv = toYUV(img);
   
   if (!SDL_WasInit(SDL_INIT_VIDEO)) {
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
@@ -128,21 +148,47 @@ int main(int argc, char* argv[]) {
 
   SDL_Texture* texture = SDL_CreateTexture(render, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, img.nc, img.nr);
     
-  ImageEvaluator eval(img, [=](const Genome& genome) -> ByteImage {return rasterize(render, texture, genome);});
-  Population P(&eval, 32);
+  ImageEvaluator eval(yuv, [=](const Genome& genome) -> ByteImage {return rasterize(render, texture, genome);});
+  Population P(&eval, 100);
+  
+  Random::seedTime();
 
   SDL_Event event;
+  
+  printf("Seeding...\n");
+  P.seed(32, 200,
+	 [&](int ind, int it, const Genome& genome, double quality) {
+	   while (SDL_PollEvent(&event))
+	     if (event.type == SDL_QUIT) exit(0);
+	   
+	   draw(render, genome);
+	   printf("\rSubject %d[%d]/ Quality %lf      ", ind, it, quality);
+	   SDL_RenderPresent(render);
+	 });
+  printf("\nDone\n");
+  
   bool exitflag = false;
   while (!exitflag) {
     while (SDL_PollEvent(&event)) {
       if (event.type == SDL_QUIT) exitflag = true;
+      else if (event.type == SDL_KEYDOWN) {
+	if (event.key.keysym.sym == SDLK_F2) {
+	  //TODO: Save
+	}
+	else if (event.key.keysym.sym == SDLK_F3) {
+	  //TODO: Load
+	}
+      }
     }
 
     P.advance();
+    printf("\rGeneration %d: %d genes / Quality: %lf", P.generation, (int)P.best().polys.size(), P.quality());
+    fflush(stdout);
     
     draw(render, P.best());
     SDL_RenderPresent(render);
   }
+  printf("\n");
   
   return 0;
 }

@@ -9,8 +9,31 @@ Population::Population(Evaluator* eval, int maxpop) : eval(eval), maxpop(maxpop)
   pop.assign(maxpop, {Genome(), std::numeric_limits<float>::lowest()});
 }
 
-void Population::seed(int N, int iterations) {
-  //TODO: Accelerated mutation
+void Population::seed(int N, int iterations, std::function<void(int, int, const Genome&, double)> callback) {
+  pop.assign(N, {Genome(), std::numeric_limits<float>::lowest()});
+
+  int ind = 0;
+  Genome child;
+  double quality;
+  for (auto& cg : pop) {      
+    for (int i = 0; i < iterations; i++) {
+      child = cg.genome;
+      child.mutate(pmutate, sigma_c, sigma_v);
+      child.lengthen(plengthen);
+      quality = eval->evaluate(child);
+      
+      if (quality > cg.quality) {
+	cg.genome = child;
+	cg.quality = quality;
+      }
+	
+      callback(ind, i, cg.genome, cg.quality);
+    }
+    
+    ind++;
+  }
+  
+  sortByQuality();
 }
 
 void Population::sortByQuality() {
@@ -19,7 +42,7 @@ void Population::sortByQuality() {
 }
 
 void Population::cull() {
-  pop.resize((int)ceil(elite * pop.size()));
+  pop.resize((int)ceil(elite * maxpop));
 }
 
 Genome Population::makeChild() const {
