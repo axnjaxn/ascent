@@ -27,14 +27,11 @@ random.o: random.h random.cpp
 genome.o: color.h poly.h random.h genome.h genome.cpp
 	$(CXX) genome.cpp -c $(CFLAGS) $(CXXFLAGS)
 
-population.o: color.h poly.h random.h genome.h population.h population.cpp
-	$(CXX) population.cpp -c $(CFLAGS) $(CXXFLAGS)
-
-main.o: color.h poly.h random.h genome.h population.h main.cpp
+main.o: color.h poly.h random.h genome.h main.cpp
 	$(CXX) main.cpp -c $(CFLAGS) $(CXXFLAGS)
 
-$(APP): color.o poly.o random.o genome.o population.o main.o
-	$(CXX) color.o poly.o random.o genome.o population.o main.o -o $@ $(LDFLAGS) $(LIBS)
+$(APP): color.o poly.o random.o genome.o main.o
+	$(CXX) color.o poly.o random.o genome.o main.o -o $@ $(LDFLAGS) $(LIBS)
 
 run: debug test.jpg
 	./$(APP) test.jpg

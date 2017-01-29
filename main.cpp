@@ -1,4 +1,4 @@
-#include "population.h"
+#include "genome.h"
 #include "random.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL2_gfxPrimitives.h>
@@ -6,29 +6,66 @@
 
 using byteimage::ByteImage;
 
-class ImageEvaluator : public Evaluator {
+class Evaluator {
+public:
+  virtual double evaluate(const Genome&) = 0;
+};
+
+class SSIMEvaluator : public Evaluator {
 protected:
   ByteImage img;
   std::function<ByteImage(const Genome&)> draw_func;
 
-public:  
-  ImageEvaluator(const ByteImage& img, std::function<ByteImage(const Genome&)> draw_func) : img(img), draw_func(draw_func) { }
+public:
+  SSIMEvaluator(const ByteImage& img, std::function<ByteImage(const Genome&)> draw_func) : img(img), draw_func(draw_func) { }
 
   double evaluate(const Genome& genome) {
+    const int k = 16;
+    
     ByteImage raster = draw_func(genome);
 
-    //TODO: Upgrade this to SSIM / change to YUV
+    auto sq = [](double x) -> double {return x * x;};
     
-    double sum = 0.0, v;
+    double sum = 0.0, src, dst;
+    double msrc, mdst, ssrc, sdst, cov;
+    int w, h, N = 0;
+    const double c1 = sq(0.01 * 255);
+    const double c2 = sq(0.03 * 255);
     for (int ch = 0; ch < 3; ch++)
-      for (int r = 0; r < img.nr; r++)
-	for (int c = 0; c < img.nc; c++) {
-	  v = byteimage::diff(raster.at(r, c, ch), img.at(r, c, ch)) / 255.0;
-	  sum += v * v;
+      for (int y = 0; y < img.nr; y += k) {
+	h = std::min(img.nr - y, k);
+	for (int x = 0; x < img.nc; x += k) {
+	  w = std::min(img.nc - x, k);
+
+	  msrc = mdst = 0.0;
+	  for (int r = 0; r < h; r++)
+	    for (int c = 0; c < w; c++) {
+	      msrc += img.at(y + r, x + c, ch);
+	      mdst += raster.at(y + r, x + c, ch);
+	    }
+	  msrc /= w * h;
+	  mdst /= w * h;
+
+	  ssrc = sdst = cov = 0.0;
+	  for (int r = 0; r < h; r++)
+	    for (int c = 0; c < w; c++) {
+	      src = img.at(y + r, x + c, ch) - msrc;
+	      dst = raster.at(y + r, x + c, ch) - mdst;
+
+	      ssrc += sq(src);
+	      sdst += sq(dst);
+	      cov += src * dst;
+	    }
+	  ssrc /= w * h;
+	  sdst /= w * h;
+	  cov /= w * h;
+
+	  sum += (2.0 * msrc * mdst + c1) * (2.0 * cov + c2) / ((sq(msrc) + sq(mdst) + c1) * (ssrc + sdst + c2));
+	  N++;
 	}
-    sum /= img.nr * img.nc * 3;
-    
-    return 1.0 - sqrt(sum);
+      }
+
+    return sum /= N;
   }
 };
 
@@ -148,25 +185,15 @@ int main(int argc, char* argv[]) {
 
   SDL_Texture* texture = SDL_CreateTexture(render, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, img.nc, img.nr);
     
-  ImageEvaluator eval(yuv, [=](const Genome& genome) -> ByteImage {return rasterize(render, texture, genome);});
-  Population P(&eval, 100);
+  SSIMEvaluator eval(yuv, [=](const Genome& genome) -> ByteImage {return rasterize(render, texture, genome);});
   
   Random::seedTime();
 
+  int generation = 0;
+  Genome best, next;
+  double best_quality = eval.evaluate(best), quality;
+
   SDL_Event event;
-  
-  printf("Seeding...\n");
-  P.seed(32, 200,
-	 [&](int ind, int it, const Genome& genome, double quality) {
-	   while (SDL_PollEvent(&event))
-	     if (event.type == SDL_QUIT) exit(0);
-	   
-	   draw(render, genome);
-	   printf("\rSubject %d[%d]/ Quality %lf      ", ind, it, quality);
-	   SDL_RenderPresent(render);
-	 });
-  printf("\nDone\n");
-  
   bool exitflag = false;
   while (!exitflag) {
     while (SDL_PollEvent(&event)) {
@@ -181,14 +208,21 @@ int main(int argc, char* argv[]) {
       }
     }
 
-    P.advance();
-    printf("\rGeneration %d: %d genes / Quality: %lf", P.generation, (int)P.best().polys.size(), P.quality());
-    fflush(stdout);
-    
-    draw(render, P.best());
-    SDL_RenderPresent(render);
+    ++generation;
+    next = best;
+    next.mutate(16.0, 0.25);
+    quality = eval.evaluate(next);
+    if (quality > best_quality) {
+      best = next;
+      best_quality = quality;
+
+      draw(render, best);
+      SDL_RenderPresent(render);
+      
+      printf("\rGeneration %d: Quality %lf\n", generation, best_quality);
+      fflush(stdout);
+    }
   }
-  printf("\n");
   
   return 0;
 }
