@@ -16,14 +16,9 @@ protected:
   ByteImage img;
   std::function<ByteImage(const Genome&)> draw_func;
 
-public:
-  SSIMEvaluator(const ByteImage& img, std::function<ByteImage(const Genome&)> draw_func) : img(img), draw_func(draw_func) { }
-
-  double evaluate(const Genome& genome) {
-    const int k = 16;
+  double SSIM(const ByteImage& raster) const {
+    const int k = 8;
     
-    ByteImage raster = draw_func(genome);
-
     auto sq = [](double x) -> double {return x * x;};
     
     double sum = 0.0, src, dst;
@@ -32,9 +27,9 @@ public:
     const double c1 = sq(0.01 * 255);
     const double c2 = sq(0.03 * 255);
     for (int ch = 0; ch < 3; ch++)
-      for (int y = 0; y < img.nr; y += k) {
+      for (int y = 0; y < img.nr; y += k / 2) {
 	h = std::min(img.nr - y, k);
-	for (int x = 0; x < img.nc; x += k) {
+	for (int x = 0; x < img.nc; x += k / 2) {
 	  w = std::min(img.nc - x, k);
 
 	  msrc = mdst = 0.0;
@@ -66,6 +61,29 @@ public:
       }
 
     return sum /= N;
+
+  }
+  
+  double RMSE(const ByteImage& raster) const {
+    double sum = 0.0, v;
+    for (int ch = 0; ch < 3; ch++)
+      for (int r = 0; r < img.nr; r++)
+	for (int c = 0; c < img.nc; c++) {
+	  v = byteimage::diff(raster.at(r, c, ch), img.at(r, c, ch)) / 255.0;
+	  sum += v * v;
+	}
+    sum /= img.nr * img.nc * 3;
+    
+    return 1.0 - sqrt(sum);
+  }
+  
+public:
+  SSIMEvaluator(const ByteImage& img, std::function<ByteImage(const Genome&)> draw_func) : img(img), draw_func(draw_func) { }
+
+  double evaluate(const Genome& genome) {
+    ByteImage raster = draw_func(genome);
+
+    return RMSE(raster) * pow(SSIM(raster), 0.3);
   }
 };
 
@@ -86,7 +104,7 @@ ByteImage rasterize(SDL_Renderer* render, SDL_Texture* texture, const Genome& ge
 
     for (int i = 0; i < poly.verts.size(); i++) {
       x[i] = (int16_t)(poly.verts[i].x * nc + 0.5f);
-      y[i] = (int16_t)(poly.verts[i].y * nr + 0.5f);
+      y[i] = (int16_t)((1.0 - poly.verts[i].y) * nr + 0.5f);
     }
 
     filledPolygonRGBA(render, x.data(), y.data(), x.size(), poly.color.Y, poly.color.U, poly.color.V, poly.color.A);
@@ -157,6 +175,44 @@ ByteImage toYUV(const ByteImage& img) {
   return yuv;
 }
 
+void save(const Genome& genome, int generation) {
+  FILE* fp = fopen("temp.sav", "wb");
+  fwrite(&generation, sizeof(int), 1, fp);
+  int Npolys = genome.polys.size();
+  fwrite(&Npolys, sizeof(int), 1, fp);
+  for (auto& poly : genome.polys) {
+    int Nverts = poly.verts.size();
+    fwrite(&poly.color.YUVA, sizeof(uint32_t), 1, fp);
+    fwrite(&Nverts, sizeof(int), 1, fp);
+    for (auto& vert : poly.verts)
+      fwrite(&vert, sizeof(Vert), 1, fp);
+  }
+  fclose(fp);
+}
+
+void load(Genome& genome, double& quality, int& generation, Evaluator& eval) {
+  genome = Genome();
+  quality = eval.evaluate(genome);
+
+  FILE* fp = fopen("temp.sav", "rb");
+  fread(&generation, sizeof(int), 1, fp);
+  int Npolys;
+  fread(&Npolys, sizeof(int), 1, fp);
+  for (int i = 0; i < Npolys; i++) {
+    Poly poly;
+    int Nverts;
+    fread(&poly.color.YUVA, sizeof(uint32_t), 1, fp);
+    fread(&Nverts, sizeof(int), 1, fp);	    
+    for (int j = 0; j < Nverts; j++) {
+      Vert vert;
+      fread(&vert, sizeof(Vert), 1, fp);
+      poly.verts.push_back(vert);
+    }
+    genome.polys.push_back(poly);
+  }
+  fclose(fp);
+}
+
 int main(int argc, char* argv[]) {
   if (argc != 2) {
     printf("Syntax: %s [image]\n", argv[0]);
@@ -199,12 +255,8 @@ int main(int argc, char* argv[]) {
     while (SDL_PollEvent(&event)) {
       if (event.type == SDL_QUIT) exitflag = true;
       else if (event.type == SDL_KEYDOWN) {
-	if (event.key.keysym.sym == SDLK_F2) {
-	  //TODO: Save
-	}
-	else if (event.key.keysym.sym == SDLK_F3) {
-	  //TODO: Load
-	}
+	if (event.key.keysym.sym == SDLK_F2) save(best, generation);
+	else if (event.key.keysym.sym == SDLK_F3) load(best, best_quality, generation, eval);
       }
     }
 
@@ -219,8 +271,13 @@ int main(int argc, char* argv[]) {
       draw(render, best);
       SDL_RenderPresent(render);
       
-      printf("\rGeneration %d: Quality %lf\n", generation, best_quality);
+      printf("Generation %d: %d polygons / quality %lf\n", generation, (int)best.polys.size(), best_quality);
       fflush(stdout);
+    }
+
+    if (!(generation & 0x3FF)) {
+      printf("Saved\n");
+      save(best, generation);
     }
   }
   
