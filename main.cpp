@@ -191,10 +191,11 @@ void save(const Genome& genome, int generation) {
 }
 
 void load(Genome& genome, double& quality, int& generation, Evaluator& eval) {
-  genome = Genome();
-  quality = eval.evaluate(genome);
-
   FILE* fp = fopen("temp.sav", "rb");
+  if (!fp) return;
+  
+  genome = Genome();
+
   fread(&generation, sizeof(int), 1, fp);
   int Npolys;
   fread(&Npolys, sizeof(int), 1, fp);
@@ -211,6 +212,8 @@ void load(Genome& genome, double& quality, int& generation, Evaluator& eval) {
     genome.polys.push_back(poly);
   }
   fclose(fp);
+
+  quality = eval.evaluate(genome);
 }
 
 int main(int argc, char* argv[]) {
@@ -249,6 +252,8 @@ int main(int argc, char* argv[]) {
   Genome best, next;
   double best_quality = eval.evaluate(best), quality;
 
+  load(best, best_quality, generation, eval);
+  
   SDL_Event event;
   bool exitflag = false;
   while (!exitflag) {
